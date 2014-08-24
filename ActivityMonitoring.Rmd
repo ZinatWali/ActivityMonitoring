@@ -7,6 +7,7 @@ output: html_document
 
 ```{r echo=FALSE, results='hide'}
 library(caret)
+library(randomForest)
 ```
 
 ## Introduction
@@ -89,12 +90,108 @@ testingSubSet <- allInTraining[-partitionRule,]
 
 For doing the prediction, a model is required. In this step, the model is built. A few differnt algorithms are tried. 
 
-random forest...
+The first attempt is gbm which turns to be pretty accurate but comparatively slower.
 
-```{r, echo=FALSE}
-#rfFit <- randomForest(trainingSubSet[, -53], trainingSubSet[, 53], mtry=4)
-##pRF <- predict(rfFit, testingSubSet)
-#confusionMatrix(testingSubSet$classe, pRF)
+```{r eval=FALSE}
+gbmFit <- train(classe ~., method = "gbm", data=trainingSubSet)
+pGBM <- predict(gbmFit, newdata=testingSubSet)
+accuracyGBM <- sum(pGBM == testingSubSet$classe) / nrow(testingSubSet)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+Although later it was found that calling gbm() directly instead of using caret can be much faster.
+
+The next attempt is svc. It is much faster but not so accurate. 
+
+```{r eval=FALSE}
+svmFit <- train(classe ~., method = "svm", data=trainingSubSet)
+pSVM <- predict(svmFit, newdata=testingSubSet)
+sum(pSVM == testingSubSet$classe)
+```
+
+The next attempt is Random Forest. It seems to be a winner in all respects.
+
+```{r cache=TRUE}
+rfFit <- randomForest(trainingSubSet[, -53], trainingSubSet[, 53], mtry=4)
+pRF <- predict(rfFit, testingSubSet)
+confusionMatrix(testingSubSet$classe, pRF)
+```
+
+
+## Cross Validation
+
+Although Random Forest seems to be quite accurate, it can biased without any cross validation.  
+
+```{r results='hide', cache=TRUE}
+createFolds(trainingSubSet$classe, k=10)
+```
+
+```{r cache=TRUE}
+set.seed(4567)
+folds <- createFolds(trainingSubSet$classe, k=10)
+
+getConfusionMatrix <- function(fold){
+  myTrain <- trainingSubSet[fold, ]
+  myCrossValidation <- trainingSubSet[-fold, ]
+  
+  set.seed(1567)
+  fit <- randomForest(myTrain[, -53], myTrain$classe, mtry=4)
+  p <- predict(fit, myCrossValidation)
+  confusionMatrix(myCrossValidation$classe, p)
+}
+
+cm <- data.frame(overall=c(), byclass=c())
+
+acc <- vector()
+sens <- vector()
+spec <- vector()
+
+
+for(i in 1:10)
+{ 
+  cm <- getConfusionMatrix(folds[[i]]) 
+  acc <- c(acc, sum(cm$overall["Accuracy"]))
+  sens <- c(sens, sum(cm$byClass[, 1]) / 5)
+  spec <- c(spec, sum(cm$byClass[, 2]) / 5)
+}
+
+paste("Average Accuracy : ", sum(acc)/10)
+paste("Average Sensitivity : ", sum(sens)/10)
+paste("Average Specificity : ", sum(spec)/10)
+```
+
+
+## Out of sample error
+
+The last step is to try the model on the TestingSubSet that we separated out from the original training set.
+
+```{r cache=TRUE}
+fit <- randomForest(trainingSubSet[, -53], trainingSubSet$classe, mtry=4)
+pFit <- predict(fit, testingSubSet)
+confusionMatrix(testingSubSet$classe, pFit)
+```
+
+As it can be seen, it gives an accuracy of about 99.6%.
+
+## Predicting Test Data
+
+inTesting is the test data set that we need to predict for. And we fit the model with the whole unpartitioned training set.
+
+
+```{r cache=TRUE}
+modFit <- randomForest(inTraining[, -53], inTraining$classe, mtry=4)
+tFit <- predict(modFit, inTesting)
+confusionMatrix(inTesting$classe, tFit)
+
+```
+
+Using the function provided in instructions to generate the output files. 
+
+```{r eval=FALSE}
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+```

@@ -59,7 +59,9 @@ if (window.hljs && document.readyState && document.readyState === "complete") {
 
 
 <pre><code>## Loading required package: lattice
-## Loading required package: ggplot2</code></pre>
+## Loading required package: ggplot2
+## randomForest 4.6-10
+## Type rfNews() to see new features/changes/bug fixes.</code></pre>
 <div id="introduction" class="section level2">
 <h2>Introduction</h2>
 <p>This document describes an analysis of data acquired from Personal Activity Monitors. Data is sourced from a group of individuals performing barbell lifts. The goal of the analysis was to predict if a person is doing the lifting correctly or incorrectly by looking at the reading of the individuals activity monitors.</p>
@@ -115,8 +117,127 @@ testingSubSet &lt;- allInTraining[-partitionRule,]</code></pre>
 <div id="choosing-a-model" class="section level2">
 <h2>Choosing a model</h2>
 <p>For doing the prediction, a model is required. In this step, the model is built. A few differnt algorithms are tried.</p>
-<p>random forest…</p>
-<p>Note that the <code>echo = FALSE</code> parameter was added to the code chunk to prevent printing of the R code that generated the plot.</p>
+<p>The first attempt is gbm which turns to be pretty accurate but comparatively slower.</p>
+<pre class="r"><code>gbmFit &lt;- train(classe ~., method = &quot;gbm&quot;, data=trainingSubSet)
+pGBM &lt;- predict(gbmFit, newdata=testingSubSet)
+accuracyGBM &lt;- sum(pGBM == testingSubSet$classe) / nrow(testingSubSet)</code></pre>
+<p>Although later it was found that calling gbm() directly instead of using caret can be much faster.</p>
+<p>The next attempt is svc. It is much faster but not so accurate.</p>
+<pre class="r"><code>svmFit &lt;- train(classe ~., method = &quot;svm&quot;, data=trainingSubSet)
+pSVM &lt;- predict(svmFit, newdata=testingSubSet)
+sum(pSVM == testingSubSet$classe)</code></pre>
+<p>The next attempt is Random Forest. It seems to be a winner in all respects.</p>
+<pre class="r"><code>rfFit &lt;- randomForest(trainingSubSet[, -53], trainingSubSet[, 53], mtry=4)
+pRF &lt;- predict(rfFit, testingSubSet)
+confusionMatrix(testingSubSet$classe, pRF)</code></pre>
+<pre><code>## Confusion Matrix and Statistics
+## 
+##           Reference
+## Prediction   A   B   C   D   E
+##          A 558   0   0   0   0
+##          B   2 377   0   0   0
+##          C   0   2 340   0   0
+##          D   0   0   1 319   1
+##          E   0   0   0   1 359
+## 
+## Overall Statistics
+##                                         
+##                Accuracy : 0.996         
+##                  95% CI : (0.993, 0.999)
+##     No Information Rate : 0.286         
+##     P-Value [Acc &gt; NIR] : &lt;2e-16        
+##                                         
+##                   Kappa : 0.995         
+##  Mcnemar's Test P-Value : NA            
+## 
+## Statistics by Class:
+## 
+##                      Class: A Class: B Class: C Class: D Class: E
+## Sensitivity             0.996    0.995    0.997    0.997    0.997
+## Specificity             1.000    0.999    0.999    0.999    0.999
+## Pos Pred Value          1.000    0.995    0.994    0.994    0.997
+## Neg Pred Value          0.999    0.999    0.999    0.999    0.999
+## Prevalence              0.286    0.193    0.174    0.163    0.184
+## Detection Rate          0.285    0.192    0.173    0.163    0.183
+## Detection Prevalence    0.285    0.193    0.174    0.164    0.184
+## Balanced Accuracy       0.998    0.997    0.998    0.998    0.998</code></pre>
+</div>
+<div id="cross-validation" class="section level2">
+<h2>Cross Validation</h2>
+<p>Although Random Forest seems to be quite accurate, it can biased without any cross validation.</p>
+<pre class="r"><code>createFolds(trainingSubSet$classe, k=10)</code></pre>
+<pre class="r"><code>set.seed(4567)
+folds &lt;- createFolds(trainingSubSet$classe, k=10)
+
+getConfusionMatrix &lt;- function(fold){
+  myTrain &lt;- trainingSubSet[fold, ]
+  myCrossValidation &lt;- trainingSubSet[-fold, ]
+  
+  set.seed(1567)
+  fit &lt;- randomForest(myTrain[, -53], myTrain$classe, mtry=4)
+  p &lt;- predict(fit, myCrossValidation)
+  confusionMatrix(myCrossValidation$classe, p)
+}
+
+cm &lt;- data.frame(overall=c(), byclass=c())
+
+acc &lt;- vector()
+sens &lt;- vector()
+spec &lt;- vector()
+
+
+for(i in 1:10)
+{ 
+  cm &lt;- getConfusionMatrix(folds[[i]]) 
+  acc &lt;- c(acc, sum(cm$overall[&quot;Accuracy&quot;]))
+  sens &lt;- c(sens, sum(cm$byClass[, 1]) / 5)
+  spec &lt;- c(spec, sum(cm$byClass[, 2]) / 5)
+}
+
+paste(&quot;Average Accuracy : &quot;, sum(acc)/10)</code></pre>
+<pre><code>## [1] &quot;Average Accuracy :  0.942714525369688&quot;</code></pre>
+<pre class="r"><code>paste(&quot;Average Sensitivity : &quot;, sum(sens)/10)</code></pre>
+<pre><code>## [1] &quot;Average Sensitivity :  0.94214119420403&quot;</code></pre>
+<pre class="r"><code>paste(&quot;Average Specificity : &quot;, sum(spec)/10)</code></pre>
+<pre><code>## [1] &quot;Average Specificity :  0.985894686933259&quot;</code></pre>
+</div>
+<div id="final-model" class="section level2">
+<h2>Final Model</h2>
+<p>The last step is to try the model on the TestingSubSet.</p>
+<pre class="r"><code>fit &lt;- randomForest(trainingSubSet[, -53], trainingSubSet$classe, mtry=4)
+pFit &lt;- predict(fit, testingSubSet)
+confusionMatrix(testingSubSet$classe, pFit)</code></pre>
+<pre><code>## Confusion Matrix and Statistics
+## 
+##           Reference
+## Prediction   A   B   C   D   E
+##          A 557   0   0   0   1
+##          B   0 377   2   0   0
+##          C   0   0 342   0   0
+##          D   0   0   2 317   2
+##          E   0   0   0   1 359
+## 
+## Overall Statistics
+##                                         
+##                Accuracy : 0.996         
+##                  95% CI : (0.992, 0.998)
+##     No Information Rate : 0.284         
+##     P-Value [Acc &gt; NIR] : &lt;2e-16        
+##                                         
+##                   Kappa : 0.995         
+##  Mcnemar's Test P-Value : NA            
+## 
+## Statistics by Class:
+## 
+##                      Class: A Class: B Class: C Class: D Class: E
+## Sensitivity             1.000    1.000    0.988    0.997    0.992
+## Specificity             0.999    0.999    1.000    0.998    0.999
+## Pos Pred Value          0.998    0.995    1.000    0.988    0.997
+## Neg Pred Value          1.000    1.000    0.998    0.999    0.998
+## Prevalence              0.284    0.192    0.177    0.162    0.185
+## Detection Rate          0.284    0.192    0.174    0.162    0.183
+## Detection Prevalence    0.285    0.193    0.174    0.164    0.184
+## Balanced Accuracy       1.000    0.999    0.994    0.997    0.996</code></pre>
 </div>
 
 
