@@ -1,10 +1,15 @@
 ---
+<<<<<<< HEAD
 title: "Analysis of Activity Monitoring Data"
+=======
+title: "ActivityMonitoring"
+>>>>>>> master
 author: "Zinat Wali"
 date: "Sunday, August 24, 2014"
 output: html_document
 ---
 
+<<<<<<< HEAD
 ```{r echo=FALSE, results='hide'}
 library(caret)
 library(randomForest)
@@ -27,6 +32,21 @@ test <- read.csv('test.csv')
 ```
 
 The data is then copied into new data frames. The original ones are kept for reference and fallback.
+=======
+```{r}
+library(caret)
+```
+
+
+```{r cache=TRUE}
+training <- read.csv('https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv')
+
+test <- read.csv('https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv')
+```
+
+
+The training data is then copied into another data frame. The original one is kept for reference and fallback.
+>>>>>>> master
 
 ```{r cache=TRUE}
 inTraining <- training
@@ -34,6 +54,7 @@ inTesting <- test
 ```
 
 
+<<<<<<< HEAD
 ## Understanding the structure of data and Pre-processing
 
 Each of the datasets has got 160 columns. They are identical in the training and test data set. 
@@ -46,6 +67,9 @@ levels(inTraining$classe)
 
 
 After some manual observation and walk-throughs,it is prominent that the readings from the monitors are contained in the columns 8 to 160. The next step is clean up the data sets of all those feature columns that are either not monitor readings or monitor readings but undefined(NA) or blank for all the observations.
+=======
+removing irrelevant features...
+>>>>>>> master
 
 ```{r}
 LL <- c(1:7)
@@ -59,6 +83,7 @@ for(i in 8:ncol(inTraining))
 }
 
 inTraining <- inTraining[, -LL]
+<<<<<<< HEAD
 inTesting <- inTesting[, -LL]
 
 dim(inTraining)
@@ -108,7 +133,7 @@ pSVM <- predict(svmFit, newdata=testingSubSet)
 sum(pSVM == testingSubSet$classe)
 ```
 
-The next attempt is Random Forest. It seems to be a winner in all respects. After trying with mtry values 2 to 7, it is found that accuracy does not improve much after mtry = 4. As taking more components imply longer exceution time, mtry = 4 is taken as the optimum model.
+The next attempt is Random Forest. It seems to be a winner in all respects.
 
 ```{r cache=TRUE}
 rfFit <- randomForest(trainingSubSet[, -53], trainingSubSet[, 53], mtry=4)
@@ -185,7 +210,7 @@ tFit <- predict(modFit, inTesting)
 
 Using the function provided in instructions to generate the output files. 
 
-```{r eval=FALSE}
+```{r}
 pml_write_files <- function(x){
   n = length(x)
   for(i in 1:n){
@@ -197,11 +222,23 @@ pml_write_files <- function(x){
 pml_write_files(tFit)
 
 ```
+=======
 
-## Visualization
+```
 
-Plotting the final model tFit shows that as the number of trees are incremented from 0 to higher, the errors drop drastically. But as also seen during analysis, when a certain threshold is reached the error levels remain almost constant. It decrease but so slowly that it does not compensate the computational burde added by extra trees. 
+partitioning data....
 
 ```{r}
-plot(modFit)
+
 ```
+
+random forest...
+
+```{r, echo=FALSE}
+#rfFit <- randomForest(trainingSubSet[, -53], trainingSubSet[, 53], mtry=4)
+##pRF <- predict(rfFit, testingSubSet)
+#confusionMatrix(testingSubSet$classe, pRF)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+>>>>>>> master
