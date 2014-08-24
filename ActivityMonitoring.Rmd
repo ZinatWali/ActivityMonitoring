@@ -1,0 +1,100 @@
+---
+title: "Analysis of Activity Monitoring Data"
+author: "Zinat Wali"
+date: "Sunday, August 24, 2014"
+output: html_document
+---
+
+```{r echo=FALSE, results='hide'}
+library(caret)
+```
+
+## Introduction
+
+This document describes an analysis of data acquired from Personal Activity Monitors. Data is sourced from a group of individuals performing barbell lifts. The goal of the analysis was to predict if a person is doing the lifting correctly or incorrectly by looking at the reading of the individuals activity monitors.
+
+## Data Details
+
+Data is sourced from the website http://groupware.les.inf.puc-rio.br/har. The data comes in two different sets clearly distinguished for training and testing.  So the first task is to read the data into local files. From there, they are then loaded into memory.
+
+```{r cache=TRUE, results='hide'}
+download.file('http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv', destfile='training.csv')
+training <- read.csv('training.csv')
+
+download.file('http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv', destfile='test.csv')
+test <- read.csv('test.csv')
+```
+
+The data is then copied into new data frames. The original ones are kept for reference and fallback.
+
+```{r cache=TRUE}
+inTraining <- training
+inTesting <- test
+```
+
+
+## Understanding the structure of data and Pre-processing
+
+Each of the datasets has got 160 columns. They are identical in the training and test data set. 
+
+The target variable is contained in the column 'classe'. It is a factor type with five different levels -
+
+```{r}
+levels(inTraining$classe)
+```
+
+
+After some manual observation and walk-throughs,it is prominent that the readings from the monitors are contained in the columns 8 to 160. The next step is clean up the data sets of all those feature columns that are either not monitor readings or monitor readings but undefined(NA) or blank for all the observations.
+
+```{r}
+LL <- c(1:7)
+
+for(i in 8:ncol(inTraining))
+{
+  if(sum(!is.na(inTraining[, i]) && inTraining[,i] != '') == 0)
+  {
+    LL <- append(LL, i)
+  }
+}
+
+inTraining <- inTraining[, -LL]
+inTesting <- inTesting[, -LL]
+
+dim(inTraining)
+dim(inTesting)
+
+```
+
+This leads to much neater and compact dataset.
+
+## Partitioning the training data
+
+As the data is now free of all irrelevant features, the next step is to partition the training set into training and test sub sets.
+
+
+```{r}
+
+allInTraining <- inTraining
+
+partitionRule <- createDataPartition(allInTraining$classe, p = 0.9, list=FALSE)
+
+trainingSubSet <- allInTraining[partitionRule, ]
+testingSubSet <- allInTraining[-partitionRule,]
+
+
+```
+
+
+## Choosing a model
+
+For doing the prediction, a model is required. In this step, the model is built. A few differnt algorithms are tried. 
+
+random forest...
+
+```{r, echo=FALSE}
+#rfFit <- randomForest(trainingSubSet[, -53], trainingSubSet[, 53], mtry=4)
+##pRF <- predict(rfFit, testingSubSet)
+#confusionMatrix(testingSubSet$classe, pRF)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
