@@ -180,18 +180,20 @@ inTesting is the test data set that we need to predict for. And we fit the model
 ```{r cache=TRUE}
 modFit <- randomForest(inTraining[, -53], inTraining$classe, mtry=4)
 tFit <- predict(modFit, inTesting)
-confusionMatrix(inTesting$classe, tFit)
 
 ```
 
 Using the function provided in instructions to generate the output files. 
 
-```{r eval=FALSE}
-pml_write_files = function(x){
+```{r}
+pml_write_files <- function(x){
   n = length(x)
   for(i in 1:n){
     filename = paste0("problem_id_",i,".txt")
     write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
   }
 }
+
+pml_write_files(tFit)
+
 ```

@@ -201,9 +201,9 @@ paste(&quot;Average Accuracy : &quot;, sum(acc)/10)</code></pre>
 <pre class="r"><code>paste(&quot;Average Specificity : &quot;, sum(spec)/10)</code></pre>
 <pre><code>## [1] &quot;Average Specificity :  0.985894686933259&quot;</code></pre>
 </div>
-<div id="final-model" class="section level2">
-<h2>Final Model</h2>
-<p>The last step is to try the model on the TestingSubSet.</p>
+<div id="out-of-sample-error" class="section level2">
+<h2>Out of sample error</h2>
+<p>The last step is to try the model on the TestingSubSet that we separated out from the original training set.</p>
 <pre class="r"><code>fit &lt;- randomForest(trainingSubSet[, -53], trainingSubSet$classe, mtry=4)
 pFit &lt;- predict(fit, testingSubSet)
 confusionMatrix(testingSubSet$classe, pFit)</code></pre>
@@ -238,6 +238,23 @@ confusionMatrix(testingSubSet$classe, pFit)</code></pre>
 ## Detection Rate          0.284    0.192    0.174    0.162    0.183
 ## Detection Prevalence    0.285    0.193    0.174    0.164    0.184
 ## Balanced Accuracy       1.000    0.999    0.994    0.997    0.996</code></pre>
+<p>As it can be seen, it gives an accuracy of about 99.6%.</p>
+</div>
+<div id="predicting-test-data" class="section level2">
+<h2>Predicting Test Data</h2>
+<p>inTesting is the test data set that we need to predict for. And we fit the model with the whole unpartitioned training set.</p>
+<pre class="r"><code>modFit &lt;- randomForest(inTraining[, -53], inTraining$classe, mtry=4)
+tFit &lt;- predict(modFit, inTesting)</code></pre>
+<p>Using the function provided in instructions to generate the output files.</p>
+<pre class="r"><code>pml_write_files &lt;- function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0(&quot;problem_id_&quot;,i,&quot;.txt&quot;)
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+
+pml_write_files(tFit)</code></pre>
 </div>
 
 
